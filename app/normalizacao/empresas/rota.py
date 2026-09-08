@@ -3,6 +3,7 @@ from datetime import datetime
 from app.domain.models import Localidade, Preco, ViagemNormalizada
 from app.normalizacao.interface import NormalizadorViagem
 
+from app.domain.validacoes import validar_ordem_datas
 
 class NormalizadorRota(NormalizadorViagem):
 
@@ -25,7 +26,8 @@ class NormalizadorRota(NormalizadorViagem):
     def normalizar(self, payload: dict) -> ViagemNormalizada:
         partida = datetime.fromisoformat(payload["partida_em"])
         chegada = datetime.fromisoformat(payload["chegada_em"])
-
+        validar_ordem_datas(partida, chegada)
+        
         valor = payload["tarifa_centavos"] / 100
 
         return ViagemNormalizada(

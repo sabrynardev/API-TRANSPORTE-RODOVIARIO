@@ -3,6 +3,7 @@ from datetime import datetime
 from app.domain.models import Localidade, Preco, ViagemNormalizada
 from app.normalizacao.interface import NormalizadorViagem
 
+from app.domain.validacoes import validar_ordem_datas
 
 class NormalizadorSertaoBus(NormalizadorViagem):
 
@@ -31,6 +32,8 @@ class NormalizadorSertaoBus(NormalizadorViagem):
         chegada = datetime.fromisoformat(
             payload["horarios"]["chegada"]
         )
+
+        validar_ordem_datas(partida, chegada)
 
         duracao_minutos = int(
             float(payload["duracao_horas"]) * 60

@@ -4,6 +4,7 @@ from zoneinfo import ZoneInfo
 from app.domain.models import Localidade, Preco, ViagemNormalizada
 from app.normalizacao.interface import NormalizadorViagem
 
+from app.domain.validacoes import validar_ordem_datas
 
 # significa que a Progresso é uma implementação concreta do contrato que criei na TASK-06. Por isso ela precisa fornecer:
 # reconhece()
@@ -40,6 +41,8 @@ class NormalizadorProgresso(NormalizadorViagem):
             "%d/%m/%Y %H:%M"
         ).replace(tzinfo=fuso)
 
+        validar_ordem_datas(partida, chegada)
+        
         horas, minutos = map(
             int,
             payload["tempoEstimado"].split(":")

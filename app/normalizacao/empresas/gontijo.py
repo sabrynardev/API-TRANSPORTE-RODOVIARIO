@@ -4,6 +4,7 @@ from zoneinfo import ZoneInfo
 from app.domain.models import Localidade, Preco, ViagemNormalizada
 from app.normalizacao.interface import NormalizadorViagem
 
+from app.domain.validacoes import validar_ordem_datas
 
 class NormalizadorGontijo(NormalizadorViagem):
 
@@ -32,6 +33,8 @@ class NormalizadorGontijo(NormalizadorViagem):
         chegada = datetime.fromisoformat(
             payload["arrival"].replace("Z", "+00:00")
         ).astimezone(fuso_bahia)
+
+        validar_ordem_datas(partida, chegada)
 
         duracao_minutos = (
             int(payload["estimatedDurationSeconds"]) // 60
