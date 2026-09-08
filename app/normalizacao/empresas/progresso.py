@@ -7,6 +7,7 @@ from app.domain.validacoes import (
     validar_ordem_datas,
     validar_duracao,
     validar_preco,
+    validar_assentos,
 )
 
 
@@ -82,6 +83,12 @@ class NormalizadorProgresso(NormalizadorViagem):
 
         validar_preco(valor)
 
+        assentos = int(
+            payload["assentosDisponiveis"]
+        )
+
+        validar_assentos(assentos)
+
         return ViagemNormalizada(
             id_viagem=payload["codigoViagem"],
 
@@ -112,9 +119,5 @@ class NormalizadorProgresso(NormalizadorViagem):
                 "tipoServico"
             ].lower(),
 
-            assentos_disponiveis=int(
-                payload[
-                    "assentosDisponiveis"
-                ]
-            ),
+            assentos_disponiveis=assentos,
         )

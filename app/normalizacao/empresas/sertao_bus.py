@@ -6,6 +6,7 @@ from app.domain.validacoes import (
     validar_ordem_datas,
     validar_duracao,
     validar_preco,
+    validar_assentos,
 )
 
 
@@ -27,11 +28,17 @@ class NormalizadorSertaoBus(NormalizadorViagem):
 
     def normalizar(self, payload: dict) -> ViagemNormalizada:
         origem_cidade, origem_uf = (
-            payload["rota"]["partida"].rsplit("/", 1)
+            payload["rota"]["partida"].rsplit(
+                "/",
+                1
+            )
         )
 
         destino_cidade, destino_uf = (
-            payload["rota"]["chegada"].rsplit("/", 1)
+            payload["rota"]["chegada"].rsplit(
+                "/",
+                1
+            )
         )
 
         partida = datetime.fromisoformat(
@@ -48,7 +55,9 @@ class NormalizadorSertaoBus(NormalizadorViagem):
         )
 
         duracao_minutos = int(
-            float(payload["duracao_horas"]) * 60
+            float(
+                payload["duracao_horas"]
+            ) * 60
         )
 
         validar_duracao(
@@ -62,6 +71,12 @@ class NormalizadorSertaoBus(NormalizadorViagem):
         )
 
         validar_preco(valor)
+
+        assentos = int(
+            payload["lugares_livres"]
+        )
+
+        validar_assentos(assentos)
 
         categorias = {
             "CONV": "convencional",
@@ -102,7 +117,5 @@ class NormalizadorSertaoBus(NormalizadorViagem):
 
             categoria=categoria,
 
-            assentos_disponiveis=int(
-                payload["lugares_livres"]
-            ),
+            assentos_disponiveis=assentos,
         )

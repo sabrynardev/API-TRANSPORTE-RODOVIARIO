@@ -34,3 +34,9 @@ def validar_preco(valor: float) -> None:
         raise ValueError(
             "O preço deve ser maior que zero."
         )
+    
+def validar_assentos(quantidade: int) -> None:
+    if quantidade < 0:
+        raise ValueError(
+            "A quantidade de assentos disponíveis não pode ser negativa."
+        )

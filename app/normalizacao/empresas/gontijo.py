@@ -7,6 +7,7 @@ from app.domain.validacoes import (
     validar_ordem_datas,
     validar_duracao,
     validar_preco,
+    validar_assentos,
 )
 
 
@@ -28,14 +29,22 @@ class NormalizadorGontijo(NormalizadorViagem):
         return campos_identificadores.issubset(payload.keys())
 
     def normalizar(self, payload: dict) -> ViagemNormalizada:
-        fuso_bahia = ZoneInfo("America/Bahia")
+        fuso_bahia = ZoneInfo(
+            "America/Bahia"
+        )
 
         partida = datetime.fromisoformat(
-            payload["departure"].replace("Z", "+00:00")
+            payload["departure"].replace(
+                "Z",
+                "+00:00"
+            )
         ).astimezone(fuso_bahia)
 
         chegada = datetime.fromisoformat(
-            payload["arrival"].replace("Z", "+00:00")
+            payload["arrival"].replace(
+                "Z",
+                "+00:00"
+            )
         ).astimezone(fuso_bahia)
 
         validar_ordem_datas(
@@ -44,7 +53,11 @@ class NormalizadorGontijo(NormalizadorViagem):
         )
 
         duracao_minutos = (
-            int(payload["estimatedDurationSeconds"]) // 60
+            int(
+                payload[
+                    "estimatedDurationSeconds"
+                ]
+            ) // 60
         )
 
         validar_duracao(
@@ -58,6 +71,12 @@ class NormalizadorGontijo(NormalizadorViagem):
         )
 
         validar_preco(valor)
+
+        assentos = int(
+            payload["availableSeats"]
+        )
+
+        validar_assentos(assentos)
 
         categorias = {
             "CONVENTIONAL": "convencional",
@@ -98,7 +117,5 @@ class NormalizadorGontijo(NormalizadorViagem):
 
             categoria=categoria,
 
-            assentos_disponiveis=int(
-                payload["availableSeats"]
-            ),
+            assentos_disponiveis=assentos,
         )

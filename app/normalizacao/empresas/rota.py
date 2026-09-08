@@ -6,6 +6,7 @@ from app.domain.validacoes import (
     validar_ordem_datas,
     validar_duracao,
     validar_preco,
+    validar_assentos,
 )
 
 
@@ -28,12 +29,22 @@ class NormalizadorRota(NormalizadorViagem):
         return campos_identificadores.issubset(payload.keys())
 
     def normalizar(self, payload: dict) -> ViagemNormalizada:
-        partida = datetime.fromisoformat(payload["partida_em"])
-        chegada = datetime.fromisoformat(payload["chegada_em"])
+        partida = datetime.fromisoformat(
+            payload["partida_em"]
+        )
 
-        validar_ordem_datas(partida, chegada)
+        chegada = datetime.fromisoformat(
+            payload["chegada_em"]
+        )
 
-        duracao_minutos = int(payload["duracao_minutos"])
+        validar_ordem_datas(
+            partida,
+            chegada,
+        )
+
+        duracao_minutos = int(
+            payload["duracao_minutos"]
+        )
 
         validar_duracao(
             partida,
@@ -41,11 +52,21 @@ class NormalizadorRota(NormalizadorViagem):
             duracao_minutos,
         )
 
-        valor = payload["tarifa_centavos"] / 100
+        valor = (
+            payload["tarifa_centavos"] / 100
+        )
+
         validar_preco(valor)
+
+        assentos = int(
+            payload["vagas"]
+        )
+
+        validar_assentos(assentos)
 
         return ViagemNormalizada(
             id_viagem=payload["trip_id"],
+
             empresa="Rota Transportes",
 
             origem=Localidade(
@@ -59,6 +80,7 @@ class NormalizadorRota(NormalizadorViagem):
             ),
 
             partida=partida.isoformat(),
+
             chegada=chegada.isoformat(),
 
             duracao_minutos=duracao_minutos,
@@ -68,9 +90,9 @@ class NormalizadorRota(NormalizadorViagem):
                 moeda=payload["moeda"],
             ),
 
-            categoria=payload["classe"].lower(),
+            categoria=payload[
+                "classe"
+            ].lower(),
 
-            assentos_disponiveis=int(
-                payload["vagas"]
-            ),
+            assentos_disponiveis=assentos,
         )
