@@ -40,3 +40,16 @@ def validar_assentos(quantidade: int) -> None:
         raise ValueError(
             "A quantidade de assentos disponíveis não pode ser negativa."
         )
+    
+def validar_categoria(categoria: str) -> None:
+    categorias_validas = {
+        "convencional",
+        "executivo",
+        "semileito",
+        "leito",
+    }
+
+    if categoria not in categorias_validas:
+        raise ValueError(
+            "A categoria informada não pode ser normalizada."
+        )

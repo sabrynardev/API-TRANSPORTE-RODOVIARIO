@@ -7,6 +7,7 @@ from app.domain.validacoes import (
     validar_duracao,
     validar_preco,
     validar_assentos,
+    validar_categoria,
 )
 
 
@@ -64,6 +65,12 @@ class NormalizadorRota(NormalizadorViagem):
 
         validar_assentos(assentos)
 
+        categoria = payload[
+            "classe"
+        ].lower()
+
+        validar_categoria(categoria)
+
         return ViagemNormalizada(
             id_viagem=payload["trip_id"],
 
@@ -90,9 +97,7 @@ class NormalizadorRota(NormalizadorViagem):
                 moeda=payload["moeda"],
             ),
 
-            categoria=payload[
-                "classe"
-            ].lower(),
+            categoria=categoria,
 
             assentos_disponiveis=assentos,
         )

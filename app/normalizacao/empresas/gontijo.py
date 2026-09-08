@@ -8,6 +8,7 @@ from app.domain.validacoes import (
     validar_duracao,
     validar_preco,
     validar_assentos,
+    validar_categoria,
 )
 
 
@@ -88,6 +89,8 @@ class NormalizadorGontijo(NormalizadorViagem):
         categoria = categorias[
             payload["serviceClass"]
         ]
+
+        validar_categoria(categoria)
 
         return ViagemNormalizada(
             id_viagem=payload["serviceCode"],

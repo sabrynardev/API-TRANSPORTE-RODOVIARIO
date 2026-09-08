@@ -8,14 +8,8 @@ from app.domain.validacoes import (
     validar_duracao,
     validar_preco,
     validar_assentos,
+    validar_categoria,
 )
-
-
-# A Progresso é uma implementação concreta do contrato
-# NormalizadorViagem criado na TASK-06.
-# Por isso, ela precisa implementar:
-# - reconhece()
-# - normalizar()
 
 
 class NormalizadorProgresso(NormalizadorViagem):
@@ -89,6 +83,12 @@ class NormalizadorProgresso(NormalizadorViagem):
 
         validar_assentos(assentos)
 
+        categoria = payload[
+            "tipoServico"
+        ].lower()
+
+        validar_categoria(categoria)
+
         return ViagemNormalizada(
             id_viagem=payload["codigoViagem"],
 
@@ -115,9 +115,7 @@ class NormalizadorProgresso(NormalizadorViagem):
                 moeda="BRL",
             ),
 
-            categoria=payload[
-                "tipoServico"
-            ].lower(),
+            categoria=categoria,
 
             assentos_disponiveis=assentos,
         )
