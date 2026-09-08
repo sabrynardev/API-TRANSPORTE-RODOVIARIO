@@ -3,12 +3,15 @@ from zoneinfo import ZoneInfo
 
 from app.domain.models import Localidade, Preco, ViagemNormalizada
 from app.normalizacao.interface import NormalizadorViagem
+from app.domain.validacoes import validar_ordem_datas, validar_duracao
 
-from app.domain.validacoes import validar_ordem_datas
 
-# significa que a Progresso é uma implementação concreta do contrato que criei na TASK-06. Por isso ela precisa fornecer:
-# reconhece()
-# normalizar()
+# A Progresso é uma implementação concreta do contrato
+# NormalizadorViagem criado na TASK-06.
+# Por isso, ela precisa implementar:
+# - reconhece()
+# - normalizar()
+
 
 class NormalizadorProgresso(NormalizadorViagem):
 
@@ -29,7 +32,12 @@ class NormalizadorProgresso(NormalizadorViagem):
         return campos_identificadores.issubset(payload.keys())
 
     def normalizar(self, payload: dict) -> ViagemNormalizada:
-        fuso = ZoneInfo(payload.get("fusoHorario", "America/Bahia"))
+        fuso = ZoneInfo(
+            payload.get(
+                "fusoHorario",
+                "America/Bahia"
+            )
+        )
 
         partida = datetime.strptime(
             payload["dataHoraSaida"],
@@ -41,21 +49,36 @@ class NormalizadorProgresso(NormalizadorViagem):
             "%d/%m/%Y %H:%M"
         ).replace(tzinfo=fuso)
 
-        validar_ordem_datas(partida, chegada)
-        
+        validar_ordem_datas(
+            partida,
+            chegada,
+        )
+
         horas, minutos = map(
             int,
             payload["tempoEstimado"].split(":")
         )
 
-        duracao_minutos = (horas * 60) + minutos
+        duracao_minutos = (
+            horas * 60
+        ) + minutos
+
+        validar_duracao(
+            partida,
+            chegada,
+            duracao_minutos,
+        )
 
         valor = float(
-            payload["valorPassagem"].replace(",", ".")
+            payload["valorPassagem"].replace(
+                ",",
+                "."
+            )
         )
 
         return ViagemNormalizada(
             id_viagem=payload["codigoViagem"],
+
             empresa="Auto Viação Progresso",
 
             origem=Localidade(
@@ -69,6 +92,7 @@ class NormalizadorProgresso(NormalizadorViagem):
             ),
 
             partida=partida.isoformat(),
+
             chegada=chegada.isoformat(),
 
             duracao_minutos=duracao_minutos,
@@ -78,9 +102,13 @@ class NormalizadorProgresso(NormalizadorViagem):
                 moeda="BRL",
             ),
 
-            categoria=payload["tipoServico"].lower(),
+            categoria=payload[
+                "tipoServico"
+            ].lower(),
 
             assentos_disponiveis=int(
-                payload["assentosDisponiveis"]
+                payload[
+                    "assentosDisponiveis"
+                ]
             ),
         )

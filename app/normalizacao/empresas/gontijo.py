@@ -3,8 +3,8 @@ from zoneinfo import ZoneInfo
 
 from app.domain.models import Localidade, Preco, ViagemNormalizada
 from app.normalizacao.interface import NormalizadorViagem
+from app.domain.validacoes import validar_ordem_datas, validar_duracao
 
-from app.domain.validacoes import validar_ordem_datas
 
 class NormalizadorGontijo(NormalizadorViagem):
 
@@ -34,10 +34,19 @@ class NormalizadorGontijo(NormalizadorViagem):
             payload["arrival"].replace("Z", "+00:00")
         ).astimezone(fuso_bahia)
 
-        validar_ordem_datas(partida, chegada)
+        validar_ordem_datas(
+            partida,
+            chegada,
+        )
 
         duracao_minutos = (
             int(payload["estimatedDurationSeconds"]) // 60
+        )
+
+        validar_duracao(
+            partida,
+            chegada,
+            duracao_minutos,
         )
 
         categorias = {
@@ -47,10 +56,13 @@ class NormalizadorGontijo(NormalizadorViagem):
             "SLEEPER": "leito",
         }
 
-        categoria = categorias[payload["serviceClass"]]
+        categoria = categorias[
+            payload["serviceClass"]
+        ]
 
         return ViagemNormalizada(
             id_viagem=payload["serviceCode"],
+
             empresa="Gontijo",
 
             origem=Localidade(
@@ -64,12 +76,15 @@ class NormalizadorGontijo(NormalizadorViagem):
             ),
 
             partida=partida.isoformat(),
+
             chegada=chegada.isoformat(),
 
             duracao_minutos=duracao_minutos,
 
             preco=Preco(
-                valor=float(payload["fare"]["amount"]),
+                valor=float(
+                    payload["fare"]["amount"]
+                ),
                 moeda=payload["fare"]["currency"],
             ),
 

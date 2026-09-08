@@ -2,8 +2,8 @@ from datetime import datetime
 
 from app.domain.models import Localidade, Preco, ViagemNormalizada
 from app.normalizacao.interface import NormalizadorViagem
+from app.domain.validacoes import validar_ordem_datas, validar_duracao
 
-from app.domain.validacoes import validar_ordem_datas
 
 class NormalizadorSertaoBus(NormalizadorViagem):
 
@@ -22,8 +22,13 @@ class NormalizadorSertaoBus(NormalizadorViagem):
         return campos_identificadores.issubset(payload.keys())
 
     def normalizar(self, payload: dict) -> ViagemNormalizada:
-        origem_cidade, origem_uf = payload["rota"]["partida"].rsplit("/", 1)
-        destino_cidade, destino_uf = payload["rota"]["chegada"].rsplit("/", 1)
+        origem_cidade, origem_uf = (
+            payload["rota"]["partida"].rsplit("/", 1)
+        )
+
+        destino_cidade, destino_uf = (
+            payload["rota"]["chegada"].rsplit("/", 1)
+        )
 
         partida = datetime.fromisoformat(
             payload["horarios"]["saida"]
@@ -33,10 +38,19 @@ class NormalizadorSertaoBus(NormalizadorViagem):
             payload["horarios"]["chegada"]
         )
 
-        validar_ordem_datas(partida, chegada)
+        validar_ordem_datas(
+            partida,
+            chegada,
+        )
 
         duracao_minutos = int(
             float(payload["duracao_horas"]) * 60
+        )
+
+        validar_duracao(
+            partida,
+            chegada,
+            duracao_minutos,
         )
 
         categorias = {
@@ -46,10 +60,13 @@ class NormalizadorSertaoBus(NormalizadorViagem):
             "LEITO": "leito",
         }
 
-        categoria = categorias[payload["servico"]]
+        categoria = categorias[
+            payload["servico"]
+        ]
 
         return ViagemNormalizada(
             id_viagem=payload["numero"],
+
             empresa="Sertão Bus",
 
             origem=Localidade(
@@ -63,12 +80,15 @@ class NormalizadorSertaoBus(NormalizadorViagem):
             ),
 
             partida=partida.isoformat(),
+
             chegada=chegada.isoformat(),
 
             duracao_minutos=duracao_minutos,
 
             preco=Preco(
-                valor=float(payload["preco_total"]),
+                valor=float(
+                    payload["preco_total"]
+                ),
                 moeda=payload["moeda"],
             ),
 
