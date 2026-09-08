@@ -2,7 +2,11 @@ from datetime import datetime
 
 from app.domain.models import Localidade, Preco, ViagemNormalizada
 from app.normalizacao.interface import NormalizadorViagem
-from app.domain.validacoes import validar_ordem_datas, validar_duracao
+from app.domain.validacoes import (
+    validar_ordem_datas,
+    validar_duracao,
+    validar_preco,
+)
 
 
 class NormalizadorSertaoBus(NormalizadorViagem):
@@ -53,6 +57,12 @@ class NormalizadorSertaoBus(NormalizadorViagem):
             duracao_minutos,
         )
 
+        valor = float(
+            payload["preco_total"]
+        )
+
+        validar_preco(valor)
+
         categorias = {
             "CONV": "convencional",
             "EXEC": "executivo",
@@ -86,9 +96,7 @@ class NormalizadorSertaoBus(NormalizadorViagem):
             duracao_minutos=duracao_minutos,
 
             preco=Preco(
-                valor=float(
-                    payload["preco_total"]
-                ),
+                valor=valor,
                 moeda=payload["moeda"],
             ),
 

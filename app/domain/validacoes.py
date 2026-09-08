@@ -28,3 +28,9 @@ def validar_duracao(
             "A duração informada é incompatível "
             "com os horários de partida e chegada."
         )
+    
+def validar_preco(valor: float) -> None:
+    if valor <= 0:
+        raise ValueError(
+            "O preço deve ser maior que zero."
+        )

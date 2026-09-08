@@ -3,7 +3,11 @@ from zoneinfo import ZoneInfo
 
 from app.domain.models import Localidade, Preco, ViagemNormalizada
 from app.normalizacao.interface import NormalizadorViagem
-from app.domain.validacoes import validar_ordem_datas, validar_duracao
+from app.domain.validacoes import (
+    validar_ordem_datas,
+    validar_duracao,
+    validar_preco,
+)
 
 
 class NormalizadorGontijo(NormalizadorViagem):
@@ -49,6 +53,12 @@ class NormalizadorGontijo(NormalizadorViagem):
             duracao_minutos,
         )
 
+        valor = float(
+            payload["fare"]["amount"]
+        )
+
+        validar_preco(valor)
+
         categorias = {
             "CONVENTIONAL": "convencional",
             "EXECUTIVE": "executivo",
@@ -82,9 +92,7 @@ class NormalizadorGontijo(NormalizadorViagem):
             duracao_minutos=duracao_minutos,
 
             preco=Preco(
-                valor=float(
-                    payload["fare"]["amount"]
-                ),
+                valor=valor,
                 moeda=payload["fare"]["currency"],
             ),
 

@@ -2,7 +2,11 @@ from datetime import datetime
 
 from app.domain.models import Localidade, Preco, ViagemNormalizada
 from app.normalizacao.interface import NormalizadorViagem
-from app.domain.validacoes import validar_ordem_datas, validar_duracao
+from app.domain.validacoes import (
+    validar_ordem_datas,
+    validar_duracao,
+    validar_preco,
+)
 
 
 class NormalizadorRota(NormalizadorViagem):
@@ -38,6 +42,7 @@ class NormalizadorRota(NormalizadorViagem):
         )
 
         valor = payload["tarifa_centavos"] / 100
+        validar_preco(valor)
 
         return ViagemNormalizada(
             id_viagem=payload["trip_id"],

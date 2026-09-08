@@ -3,7 +3,11 @@ from zoneinfo import ZoneInfo
 
 from app.domain.models import Localidade, Preco, ViagemNormalizada
 from app.normalizacao.interface import NormalizadorViagem
-from app.domain.validacoes import validar_ordem_datas, validar_duracao
+from app.domain.validacoes import (
+    validar_ordem_datas,
+    validar_duracao,
+    validar_preco,
+)
 
 
 # A Progresso é uma implementação concreta do contrato
@@ -75,6 +79,8 @@ class NormalizadorProgresso(NormalizadorViagem):
                 "."
             )
         )
+
+        validar_preco(valor)
 
         return ViagemNormalizada(
             id_viagem=payload["codigoViagem"],
