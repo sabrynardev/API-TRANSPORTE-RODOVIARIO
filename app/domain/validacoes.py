@@ -53,3 +53,11 @@ def validar_categoria(categoria: str) -> None:
         raise ValueError(
             "A categoria informada não pode ser normalizada."
         )
+
+def validar_campos_obrigatorios(
+    payload: dict,
+    campos: list[str],
+) -> None:
+    for campo in campos:
+        if campo not in payload:
+            raise KeyError(campo)

@@ -1,0 +1,150 @@
+[1mdiff --git a/app/domain/validacoes.py b/app/domain/validacoes.py[m
+[1mindex 977a458..c366041 100644[m
+[1m--- a/app/domain/validacoes.py[m
+[1m+++ b/app/domain/validacoes.py[m
+[36m@@ -27,4 +27,10 @@[m [mdef validar_duracao([m
+         raise ValueError([m
+             "A duração informada é incompatível "[m
+             "com os horários de partida e chegada."[m
+[31m-        )[m
+\ No newline at end of file[m
+[32m+[m[32m        )[m
+[32m+[m[41m    [m
+[32m+[m[32mdef validar_preco(valor: float) -> None:[m
+[32m+[m[32m    if valor <= 0:[m
+[32m+[m[32m        raise ValueError([m
+[32m+[m[32m            "O preço deve ser maior que zero."[m
+[32m+[m[32m        )[m
+[1mdiff --git a/app/normalizacao/empresas/gontijo.py b/app/normalizacao/empresas/gontijo.py[m
+[1mindex 41d4749..3787508 100644[m
+[1m--- a/app/normalizacao/empresas/gontijo.py[m
+[1m+++ b/app/normalizacao/empresas/gontijo.py[m
+[36m@@ -3,7 +3,11 @@[m [mfrom zoneinfo import ZoneInfo[m
+ [m
+ from app.domain.models import Localidade, Preco, ViagemNormalizada[m
+ from app.normalizacao.interface import NormalizadorViagem[m
+[31m-from app.domain.validacoes import validar_ordem_datas, validar_duracao[m
+[32m+[m[32mfrom app.domain.validacoes import ([m
+[32m+[m[32m    validar_ordem_datas,[m
+[32m+[m[32m    validar_duracao,[m
+[32m+[m[32m    validar_preco,[m
+[32m+[m[32m)[m
+ [m
+ [m
+ class NormalizadorGontijo(NormalizadorViagem):[m
+[36m@@ -49,6 +53,12 @@[m [mclass NormalizadorGontijo(NormalizadorViagem):[m
+             duracao_minutos,[m
+         )[m
+ [m
+[32m+[m[32m        valor = float([m
+[32m+[m[32m            payload["fare"]["amount"][m
+[32m+[m[32m        )[m
+[32m+[m
+[32m+[m[32m        validar_preco(valor)[m
+[32m+[m
+         categorias = {[m
+             "CONVENTIONAL": "convencional",[m
+             "EXECUTIVE": "executivo",[m
+[36m@@ -82,9 +92,7 @@[m [mclass NormalizadorGontijo(NormalizadorViagem):[m
+             duracao_minutos=duracao_minutos,[m
+ [m
+             preco=Preco([m
+[31m-                valor=float([m
+[31m-                    payload["fare"]["amount"][m
+[31m-                ),[m
+[32m+[m[32m                valor=valor,[m
+                 moeda=payload["fare"]["currency"],[m
+             ),[m
+ [m
+[1mdiff --git a/app/normalizacao/empresas/progresso.py b/app/normalizacao/empresas/progresso.py[m
+[1mindex 36f1408..f79a5a4 100644[m
+[1m--- a/app/normalizacao/empresas/progresso.py[m
+[1m+++ b/app/normalizacao/empresas/progresso.py[m
+[36m@@ -3,7 +3,11 @@[m [mfrom zoneinfo import ZoneInfo[m
+ [m
+ from app.domain.models import Localidade, Preco, ViagemNormalizada[m
+ from app.normalizacao.interface import NormalizadorViagem[m
+[31m-from app.domain.validacoes import validar_ordem_datas, validar_duracao[m
+[32m+[m[32mfrom app.domain.validacoes import ([m
+[32m+[m[32m    validar_ordem_datas,[m
+[32m+[m[32m    validar_duracao,[m
+[32m+[m[32m    validar_preco,[m
+[32m+[m[32m)[m
+ [m
+ [m
+ # A Progresso é uma implementação concreta do contrato[m
+[36m@@ -76,6 +80,8 @@[m [mclass NormalizadorProgresso(NormalizadorViagem):[m
+             )[m
+         )[m
+ [m
+[32m+[m[32m        validar_preco(valor)[m
+[32m+[m
+         return ViagemNormalizada([m
+             id_viagem=payload["codigoViagem"],[m
+ [m
+[1mdiff --git a/app/normalizacao/empresas/rota.py b/app/normalizacao/empresas/rota.py[m
+[1mindex 677a98d..3ceae16 100644[m
+[1m--- a/app/normalizacao/empresas/rota.py[m
+[1m+++ b/app/normalizacao/empresas/rota.py[m
+[36m@@ -2,7 +2,11 @@[m [mfrom datetime import datetime[m
+ [m
+ from app.domain.models import Localidade, Preco, ViagemNormalizada[m
+ from app.normalizacao.interface import NormalizadorViagem[m
+[31m-from app.domain.validacoes import validar_ordem_datas, validar_duracao[m
+[32m+[m[32mfrom app.domain.validacoes import ([m
+[32m+[m[32m    validar_ordem_datas,[m
+[32m+[m[32m    validar_duracao,[m
+[32m+[m[32m    validar_preco,[m
+[32m+[m[32m)[m
+ [m
+ [m
+ class NormalizadorRota(NormalizadorViagem):[m
+[36m@@ -38,6 +42,7 @@[m [mclass NormalizadorRota(NormalizadorViagem):[m
+         )[m
+ [m
+         valor = payload["tarifa_centavos"] / 100[m
+[32m+[m[32m        validar_preco(valor)[m
+ [m
+         return ViagemNormalizada([m
+             id_viagem=payload["trip_id"],[m
+[1mdiff --git a/app/normalizacao/empresas/sertao_bus.py b/app/normalizacao/empresas/sertao_bus.py[m
+[1mindex 4c0a9dc..cbc3670 100644[m
+[1m--- a/app/normalizacao/empresas/sertao_bus.py[m
+[1m+++ b/app/normalizacao/empresas/sertao_bus.py[m
+[36m@@ -2,7 +2,11 @@[m [mfrom datetime import datetime[m
+ [m
+ from app.domain.models import Localidade, Preco, ViagemNormalizada[m
+ from app.normalizacao.interface import NormalizadorViagem[m
+[31m-from app.domain.validacoes import validar_ordem_datas, validar_duracao[m
+[32m+[m[32mfrom app.domain.validacoes import ([m
+[32m+[m[32m    validar_ordem_datas,[m
+[32m+[m[32m    validar_duracao,[m
+[32m+[m[32m    validar_preco,[m
+[32m+[m[32m)[m
+ [m
+ [m
+ class NormalizadorSertaoBus(NormalizadorViagem):[m
+[36m@@ -53,6 +57,12 @@[m [mclass NormalizadorSertaoBus(NormalizadorViagem):[m
+             duracao_minutos,[m
+         )[m
+ [m
+[32m+[m[32m        valor = float([m
+[32m+[m[32m            payload["preco_total"][m
+[32m+[m[32m        )[m
+[32m+[m
+[32m+[m[32m        validar_preco(valor)[m
+[32m+[m
+         categorias = {[m
+             "CONV": "convencional",[m
+             "EXEC": "executivo",[m
+[36m@@ -86,9 +96,7 @@[m [mclass NormalizadorSertaoBus(NormalizadorViagem):[m
+             duracao_minutos=duracao_minutos,[m
+ [m
+             preco=Preco([m
+[31m-                valor=float([m
+[31m-                    payload["preco_total"][m
+[31m-                ),[m
+[32m+[m[32m                valor=valor,[m
+                 moeda=payload["moeda"],[m
+             ),[m
+ [m

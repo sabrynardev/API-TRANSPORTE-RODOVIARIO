@@ -1,12 +1,28 @@
 from app.domain.models import ViagemNormalizada
 from app.normalizacao.registry import NormalizadorRegistry
 
+
 class PipelineNormalizacao:
-    def __init__(self, registry: NormalizadorRegistry):
+
+    def __init__(
+        self,
+        registry: NormalizadorRegistry,
+    ):
         self._registry = registry
 
-    def processar(self, payload: dict) -> ViagemNormalizada:
-        normalizador = self._registry.resolver(payload)
+    def processar(
+        self,
+        payload: dict,
+    ) -> ViagemNormalizada:
+
+        normalizador = self._registry.resolver(
+            payload
+        )
+
         if normalizador is None:
-            raise ValueError("Nenhum normalizador encontrado para o payload fornecido.")
+            raise ValueError(
+                "O formato do payload não corresponde "
+                "a nenhuma companhia suportada."
+            )
+
         return normalizador.normalizar(payload)
