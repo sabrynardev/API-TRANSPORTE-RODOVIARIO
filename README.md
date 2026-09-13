@@ -526,3 +526,74 @@ Entre as validações realizadas estão:
 - quantidade de assentos não negativa;
 - UF com exatamente dois caracteres;
 - categoria reconhecida pelo sistema.
+
+## Testes automatizados
+
+O projeto utiliza `pytest` e o `TestClient` do FastAPI para validar o comportamento da API.
+
+Os testes estão localizados no diretório:
+
+```text
+tests/
+```
+
+A suíte cobre as quatro empresas suportadas e os principais requisitos funcionais e de validação da aplicação.
+
+### Cenários testados
+
+Foram implementados testes para:
+
+- normalização da Auto Viação Progresso;
+- normalização da Rota Transportes;
+- normalização da Gontijo;
+- normalização da Sertão Bus;
+- campos extras que devem ser ignorados;
+- processamento de múltiplas empresas na mesma requisição;
+- preservação da ordem dos objetos;
+- rejeição integral da requisição quando um item é inválido;
+- formato de payload desconhecido;
+- campo obrigatório ausente;
+- chegada anterior ou igual à partida;
+- duração incompatível com os horários;
+- preço inválido;
+- quantidade de assentos negativa;
+- categoria não normalizável;
+- UF com tamanho diferente de dois caracteres.
+
+### Execução
+
+Para executar toda a suíte:
+
+```bash
+python -m pytest -v
+```
+
+No estado atual do projeto, a suíte possui 15 testes automatizados.
+
+### Rejeição integral
+
+A API trabalha com o princípio de rejeição integral da requisição.
+
+Caso um dos objetos enviados no array seja inválido, a resposta HTTP é `422` e nenhuma lista parcial de viagens normalizadas é retornada.
+
+Por exemplo, em uma requisição contendo:
+
+```text
+índice 0 → viagem válida
+índice 1 → viagem inválida
+índice 2 → viagem válida
+```
+
+o erro no índice `1` faz com que toda a requisição seja rejeitada.
+
+### Testes como apoio ao desenvolvimento
+
+Os testes também foram utilizados para identificar requisitos ainda não implementados.
+
+Durante o desenvolvimento da validação de UF, foi criado um teste utilizando uma UF com três caracteres.
+
+Inicialmente o teste falhou, demonstrando que a aplicação ainda aceitava aquele valor.
+
+Após a implementação da função `validar_uf()` e sua integração aos normalizadores, o teste passou.
+
+Esse processo permitiu utilizar a suíte não apenas para confirmar comportamentos existentes, mas também para detectar e corrigir lacunas em relação aos requisitos.
