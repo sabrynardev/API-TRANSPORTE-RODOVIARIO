@@ -1,4 +1,5 @@
 from datetime import datetime
+from zoneinfo import ZoneInfo
 
 
 def validar_campos_obrigatorios(
@@ -75,3 +76,14 @@ def validar_uf(uf: str) -> None:
         raise ValueError(
             "A UF deve possuir exatamente 2 caracteres."
         )
+
+
+def aplicar_fuso_padrao(
+    data: datetime,
+) -> datetime:
+    if data.tzinfo is None:
+        return data.replace(
+            tzinfo=ZoneInfo("America/Bahia")
+        )
+
+    return data

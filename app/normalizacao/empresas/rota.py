@@ -7,6 +7,7 @@ from app.domain.models import (
     ViagemNormalizada,
 )
 from app.domain.validacoes import (
+    aplicar_fuso_padrao,
     validar_assentos,
     validar_campos_obrigatorios,
     validar_categoria,
@@ -61,6 +62,10 @@ class NormalizadorRota(NormalizadorViagem):
                 payload["partida_em"]
             )
 
+            partida = aplicar_fuso_padrao(
+                partida
+            )
+
         except (ValueError, TypeError):
             raise ErroNormalizacao(
                 mensagem="Data de saída inválida.",
@@ -71,6 +76,10 @@ class NormalizadorRota(NormalizadorViagem):
         try:
             chegada = datetime.fromisoformat(
                 payload["chegada_em"]
+            )
+
+            chegada = aplicar_fuso_padrao(
+                chegada
             )
 
         except (ValueError, TypeError):
@@ -184,8 +193,16 @@ class NormalizadorRota(NormalizadorViagem):
             )
 
         try:
+            cidade_origem = (
+                payload["origem"]["municipio"]
+            )
+
             uf_origem = (
                 payload["origem"]["estado"]
+            )
+
+            cidade_destino = (
+                payload["destino"]["municipio"]
             )
 
             uf_destino = (
@@ -216,22 +233,6 @@ class NormalizadorRota(NormalizadorViagem):
             raise ErroNormalizacao(
                 mensagem=str(erro),
                 campo="destino.estado",
-                empresa_identificada=empresa,
-            )
-
-        try:
-            cidade_origem = (
-                payload["origem"]["municipio"]
-            )
-
-            cidade_destino = (
-                payload["destino"]["municipio"]
-            )
-
-        except (KeyError, TypeError):
-            raise ErroNormalizacao(
-                mensagem="Campo obrigatório ausente.",
-                campo="origem/destino",
                 empresa_identificada=empresa,
             )
 

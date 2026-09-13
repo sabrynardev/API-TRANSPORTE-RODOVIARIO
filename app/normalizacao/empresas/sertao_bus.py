@@ -1,5 +1,4 @@
 from datetime import datetime
-from zoneinfo import ZoneInfo
 
 from app.domain.exceptions import ErroNormalizacao
 from app.domain.models import (
@@ -8,6 +7,7 @@ from app.domain.models import (
     ViagemNormalizada,
 )
 from app.domain.validacoes import (
+    aplicar_fuso_padrao,
     validar_assentos,
     validar_campos_obrigatorios,
     validar_categoria,
@@ -98,19 +98,14 @@ class NormalizadorSertaoBus(NormalizadorViagem):
                 empresa_identificada=empresa,
             )
 
-        fuso_bahia = ZoneInfo(
-            "America/Bahia"
-        )
-
         try:
             partida = datetime.fromisoformat(
                 payload["horarios"]["saida"]
             )
 
-            if partida.tzinfo is None:
-                partida = partida.replace(
-                    tzinfo=fuso_bahia
-                )
+            partida = aplicar_fuso_padrao(
+                partida
+            )
 
         except (
             ValueError,
@@ -128,10 +123,9 @@ class NormalizadorSertaoBus(NormalizadorViagem):
                 payload["horarios"]["chegada"]
             )
 
-            if chegada.tzinfo is None:
-                chegada = chegada.replace(
-                    tzinfo=fuso_bahia
-                )
+            chegada = aplicar_fuso_padrao(
+                chegada
+            )
 
         except (
             ValueError,

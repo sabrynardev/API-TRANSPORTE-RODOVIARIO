@@ -8,6 +8,7 @@ from app.domain.models import (
     ViagemNormalizada,
 )
 from app.domain.validacoes import (
+    aplicar_fuso_padrao,
     validar_assentos,
     validar_campos_obrigatorios,
     validar_categoria,
@@ -68,14 +69,13 @@ class NormalizadorGontijo(NormalizadorViagem):
                 )
             )
 
-            if partida.tzinfo is None:
-                partida = partida.replace(
-                    tzinfo=fuso_bahia
-                )
-            else:
-                partida = partida.astimezone(
-                    fuso_bahia
-                )
+            partida = aplicar_fuso_padrao(
+                partida
+            )
+
+            partida = partida.astimezone(
+                fuso_bahia
+            )
 
         except (
             ValueError,
@@ -96,14 +96,13 @@ class NormalizadorGontijo(NormalizadorViagem):
                 )
             )
 
-            if chegada.tzinfo is None:
-                chegada = chegada.replace(
-                    tzinfo=fuso_bahia
-                )
-            else:
-                chegada = chegada.astimezone(
-                    fuso_bahia
-                )
+            chegada = aplicar_fuso_padrao(
+                chegada
+            )
+
+            chegada = chegada.astimezone(
+                fuso_bahia
+            )
 
         except (
             ValueError,
