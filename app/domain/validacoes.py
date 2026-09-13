@@ -1,5 +1,15 @@
 from datetime import datetime
 
+
+def validar_campos_obrigatorios(
+    payload: dict,
+    campos: list[str],
+) -> None:
+    for campo in campos:
+        if campo not in payload:
+            raise KeyError(campo)
+
+
 def validar_ordem_datas(
     partida: datetime,
     chegada: datetime,
@@ -8,7 +18,8 @@ def validar_ordem_datas(
         raise ValueError(
             "A data de chegada deve ser posterior à data de saída."
         )
-    
+
+
 def validar_duracao(
     partida: datetime,
     chegada: datetime,
@@ -28,19 +39,23 @@ def validar_duracao(
             "A duração informada é incompatível "
             "com os horários de partida e chegada."
         )
-    
+
+
 def validar_preco(valor: float) -> None:
     if valor <= 0:
         raise ValueError(
             "O preço deve ser maior que zero."
         )
-    
+
+
 def validar_assentos(quantidade: int) -> None:
     if quantidade < 0:
         raise ValueError(
-            "A quantidade de assentos disponíveis não pode ser negativa."
+            "A quantidade de assentos disponíveis "
+            "não pode ser negativa."
         )
-    
+
+
 def validar_categoria(categoria: str) -> None:
     categorias_validas = {
         "convencional",
@@ -54,10 +69,9 @@ def validar_categoria(categoria: str) -> None:
             "A categoria informada não pode ser normalizada."
         )
 
-def validar_campos_obrigatorios(
-    payload: dict,
-    campos: list[str],
-) -> None:
-    for campo in campos:
-        if campo not in payload:
-            raise KeyError(campo)
+
+def validar_uf(uf: str) -> None:
+    if not isinstance(uf, str) or len(uf) != 2:
+        raise ValueError(
+            "A UF deve possuir exatamente 2 caracteres."
+        )

@@ -1,16 +1,21 @@
 from datetime import datetime
 
-from app.domain.models import Localidade, Preco, ViagemNormalizada
 from app.domain.exceptions import ErroNormalizacao
-from app.normalizacao.interface import NormalizadorViagem
-from app.domain.validacoes import (
-    validar_ordem_datas,
-    validar_duracao,
-    validar_preco,
-    validar_assentos,
-    validar_categoria,
-    validar_campos_obrigatorios,
+from app.domain.models import (
+    Localidade,
+    Preco,
+    ViagemNormalizada,
 )
+from app.domain.validacoes import (
+    validar_assentos,
+    validar_campos_obrigatorios,
+    validar_categoria,
+    validar_duracao,
+    validar_ordem_datas,
+    validar_preco,
+    validar_uf,
+)
+from app.normalizacao.interface import NormalizadorViagem
 
 
 class NormalizadorRota(NormalizadorViagem):
@@ -18,7 +23,13 @@ class NormalizadorRota(NormalizadorViagem):
     def reconhece(self, payload: dict) -> bool:
         return "trip_id" in payload
 
-    def normalizar(self, payload: dict) -> ViagemNormalizada:
+    def normalizar(
+        self,
+        payload: dict,
+    ) -> ViagemNormalizada:
+
+        empresa = "Rota Transportes"
+
         campos_obrigatorios = [
             "trip_id",
             "origem",
@@ -37,55 +48,61 @@ class NormalizadorRota(NormalizadorViagem):
                 payload,
                 campos_obrigatorios,
             )
-        except KeyError as erro:
-            campo = erro.args[0]
 
+        except KeyError as erro:
             raise ErroNormalizacao(
                 mensagem="Campo obrigatório ausente.",
-                campo=campo,
-                empresa_identificada="Rota Transportes",
+                campo=erro.args[0],
+                empresa_identificada=empresa,
             )
 
         try:
             partida = datetime.fromisoformat(
                 payload["partida_em"]
             )
-        except ValueError:
+
+        except (ValueError, TypeError):
             raise ErroNormalizacao(
-                mensagem="A data de saída possui formato inválido.",
+                mensagem="Data de saída inválida.",
                 campo="partida_em",
-                empresa_identificada="Rota Transportes",
+                empresa_identificada=empresa,
             )
 
         try:
             chegada = datetime.fromisoformat(
                 payload["chegada_em"]
             )
-        except ValueError:
+
+        except (ValueError, TypeError):
             raise ErroNormalizacao(
-                mensagem="A data de chegada possui formato inválido.",
+                mensagem="Data de chegada inválida.",
                 campo="chegada_em",
-                empresa_identificada="Rota Transportes",
+                empresa_identificada=empresa,
             )
 
         try:
-            validar_ordem_datas(partida, chegada)
+            validar_ordem_datas(
+                partida,
+                chegada,
+            )
+
         except ValueError as erro:
             raise ErroNormalizacao(
                 mensagem=str(erro),
                 campo="chegada_em",
-                empresa_identificada="Rota Transportes",
+                empresa_identificada=empresa,
             )
 
         try:
             duracao_minutos = int(
                 payload["duracao_minutos"]
             )
+
         except (ValueError, TypeError):
             raise ErroNormalizacao(
-                mensagem="A duração informada é inválida.",
+                mensagem="Duração inválida.",
                 campo="duracao_minutos",
-                empresa_identificada="Rota Transportes",
+                empresa_identificada=empresa,
             )
 
         try:
@@ -94,77 +111,140 @@ class NormalizadorRota(NormalizadorViagem):
                 chegada,
                 duracao_minutos,
             )
+
         except ValueError as erro:
             raise ErroNormalizacao(
                 mensagem=str(erro),
                 campo="duracao_minutos",
-                empresa_identificada="Rota Transportes",
+                empresa_identificada=empresa,
             )
 
         try:
-            valor = payload["tarifa_centavos"] / 100
-        except (TypeError, ValueError):
-            raise ErroNormalizacao(
-                mensagem="O preço informado é inválido.",
-                campo="tarifa_centavos",
-                empresa_identificada="Rota Transportes",
+            valor = (
+                payload["tarifa_centavos"]
+                / 100
             )
 
-        try:
             validar_preco(valor)
-        except ValueError as erro:
+
+        except (ValueError, TypeError) as erro:
+            mensagem = str(erro)
+
+            if not mensagem:
+                mensagem = "Preço inválido."
+
             raise ErroNormalizacao(
-                mensagem=str(erro),
+                mensagem=mensagem,
                 campo="tarifa_centavos",
-                empresa_identificada="Rota Transportes",
+                empresa_identificada=empresa,
             )
 
         try:
-            assentos = int(payload["vagas"])
-        except (ValueError, TypeError):
-            raise ErroNormalizacao(
-                mensagem="A quantidade de assentos disponíveis é inválida.",
-                campo="vagas",
-                empresa_identificada="Rota Transportes",
+            assentos = int(
+                payload["vagas"]
             )
 
-        try:
             validar_assentos(assentos)
-        except ValueError as erro:
+
+        except (ValueError, TypeError) as erro:
+            mensagem = str(erro)
+
+            if not mensagem:
+                mensagem = (
+                    "Quantidade de assentos inválida."
+                )
+
             raise ErroNormalizacao(
-                mensagem=str(erro),
+                mensagem=mensagem,
                 campo="vagas",
-                empresa_identificada="Rota Transportes",
+                empresa_identificada=empresa,
             )
 
         try:
-            categoria = payload["classe"].lower()
-        except AttributeError:
-            raise ErroNormalizacao(
-                mensagem="A categoria informada não pode ser normalizada.",
-                campo="classe",
-                empresa_identificada="Rota Transportes",
+            categoria = (
+                payload["classe"]
+                .lower()
             )
 
-        try:
             validar_categoria(categoria)
+
+        except (ValueError, AttributeError) as erro:
+            mensagem = str(erro)
+
+            if not mensagem:
+                mensagem = (
+                    "A categoria informada "
+                    "não pode ser normalizada."
+                )
+
+            raise ErroNormalizacao(
+                mensagem=mensagem,
+                campo="classe",
+                empresa_identificada=empresa,
+            )
+
+        try:
+            uf_origem = (
+                payload["origem"]["estado"]
+            )
+
+            uf_destino = (
+                payload["destino"]["estado"]
+            )
+
+        except (KeyError, TypeError):
+            raise ErroNormalizacao(
+                mensagem="Campo obrigatório ausente.",
+                campo="origem/destino",
+                empresa_identificada=empresa,
+            )
+
+        try:
+            validar_uf(uf_origem)
+
         except ValueError as erro:
             raise ErroNormalizacao(
                 mensagem=str(erro),
-                campo="classe",
-                empresa_identificada="Rota Transportes",
+                campo="origem.estado",
+                empresa_identificada=empresa,
+            )
+
+        try:
+            validar_uf(uf_destino)
+
+        except ValueError as erro:
+            raise ErroNormalizacao(
+                mensagem=str(erro),
+                campo="destino.estado",
+                empresa_identificada=empresa,
+            )
+
+        try:
+            cidade_origem = (
+                payload["origem"]["municipio"]
+            )
+
+            cidade_destino = (
+                payload["destino"]["municipio"]
+            )
+
+        except (KeyError, TypeError):
+            raise ErroNormalizacao(
+                mensagem="Campo obrigatório ausente.",
+                campo="origem/destino",
+                empresa_identificada=empresa,
             )
 
         return ViagemNormalizada(
             id_viagem=payload["trip_id"],
-            empresa="Rota Transportes",
+            empresa=empresa,
             origem=Localidade(
-                cidade=payload["origem"]["municipio"],
-                uf=payload["origem"]["estado"],
+                cidade=cidade_origem,
+                uf=uf_origem,
             ),
             destino=Localidade(
-                cidade=payload["destino"]["municipio"],
-                uf=payload["destino"]["estado"],
+                cidade=cidade_destino,
+                uf=uf_destino,
             ),
             partida=partida.isoformat(),
             chegada=chegada.isoformat(),

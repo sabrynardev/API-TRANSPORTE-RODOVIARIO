@@ -1,16 +1,22 @@
 from datetime import datetime
+from zoneinfo import ZoneInfo
 
-from app.domain.models import Localidade, Preco, ViagemNormalizada
 from app.domain.exceptions import ErroNormalizacao
-from app.normalizacao.interface import NormalizadorViagem
-from app.domain.validacoes import (
-    validar_ordem_datas,
-    validar_duracao,
-    validar_preco,
-    validar_assentos,
-    validar_categoria,
-    validar_campos_obrigatorios,
+from app.domain.models import (
+    Localidade,
+    Preco,
+    ViagemNormalizada,
 )
+from app.domain.validacoes import (
+    validar_assentos,
+    validar_campos_obrigatorios,
+    validar_categoria,
+    validar_duracao,
+    validar_ordem_datas,
+    validar_preco,
+    validar_uf,
+)
+from app.normalizacao.interface import NormalizadorViagem
 
 
 class NormalizadorSertaoBus(NormalizadorViagem):
@@ -18,7 +24,13 @@ class NormalizadorSertaoBus(NormalizadorViagem):
     def reconhece(self, payload: dict) -> bool:
         return "numero" in payload
 
-    def normalizar(self, payload: dict) -> ViagemNormalizada:
+    def normalizar(
+        self,
+        payload: dict,
+    ) -> ViagemNormalizada:
+
+        empresa = "Sertão Bus"
+
         campos_obrigatorios = [
             "numero",
             "rota",
@@ -35,77 +47,129 @@ class NormalizadorSertaoBus(NormalizadorViagem):
                 payload,
                 campos_obrigatorios,
             )
-        except KeyError as erro:
-            campo = erro.args[0]
 
+        except KeyError as erro:
             raise ErroNormalizacao(
                 mensagem="Campo obrigatório ausente.",
-                campo=campo,
-                empresa_identificada="Sertão Bus",
+                campo=erro.args[0],
+                empresa_identificada=empresa,
             )
 
         try:
-            origem_cidade, origem_uf = (
-                payload["rota"]["partida"].rsplit("/", 1)
+            cidade_origem, uf_origem = (
+                payload["rota"]["partida"]
+                .rsplit("/", 1)
             )
-        except (ValueError, AttributeError, KeyError):
+
+            cidade_destino, uf_destino = (
+                payload["rota"]["chegada"]
+                .rsplit("/", 1)
+            )
+
+        except (
+            ValueError,
+            TypeError,
+            AttributeError,
+            KeyError,
+        ):
             raise ErroNormalizacao(
-                mensagem="A origem informada possui formato inválido.",
+                mensagem="Formato de rota inválido.",
+                campo="rota",
+                empresa_identificada=empresa,
+            )
+
+        try:
+            validar_uf(uf_origem)
+
+        except ValueError as erro:
+            raise ErroNormalizacao(
+                mensagem=str(erro),
                 campo="rota.partida",
-                empresa_identificada="Sertão Bus",
+                empresa_identificada=empresa,
             )
 
         try:
-            destino_cidade, destino_uf = (
-                payload["rota"]["chegada"].rsplit("/", 1)
-            )
-        except (ValueError, AttributeError, KeyError):
+            validar_uf(uf_destino)
+
+        except ValueError as erro:
             raise ErroNormalizacao(
-                mensagem="O destino informado possui formato inválido.",
+                mensagem=str(erro),
                 campo="rota.chegada",
-                empresa_identificada="Sertão Bus",
+                empresa_identificada=empresa,
             )
+
+        fuso_bahia = ZoneInfo(
+            "America/Bahia"
+        )
 
         try:
             partida = datetime.fromisoformat(
                 payload["horarios"]["saida"]
             )
-        except (ValueError, TypeError, KeyError):
+
+            if partida.tzinfo is None:
+                partida = partida.replace(
+                    tzinfo=fuso_bahia
+                )
+
+        except (
+            ValueError,
+            TypeError,
+            KeyError,
+        ):
             raise ErroNormalizacao(
-                mensagem="A data de saída possui formato inválido.",
+                mensagem="Data de saída inválida.",
                 campo="horarios.saida",
-                empresa_identificada="Sertão Bus",
+                empresa_identificada=empresa,
             )
 
         try:
             chegada = datetime.fromisoformat(
                 payload["horarios"]["chegada"]
             )
-        except (ValueError, TypeError, KeyError):
+
+            if chegada.tzinfo is None:
+                chegada = chegada.replace(
+                    tzinfo=fuso_bahia
+                )
+
+        except (
+            ValueError,
+            TypeError,
+            KeyError,
+        ):
             raise ErroNormalizacao(
-                mensagem="A data de chegada possui formato inválido.",
+                mensagem="Data de chegada inválida.",
                 campo="horarios.chegada",
-                empresa_identificada="Sertão Bus",
+                empresa_identificada=empresa,
             )
 
         try:
-            validar_ordem_datas(partida, chegada)
+            validar_ordem_datas(
+                partida,
+                chegada,
+            )
+
         except ValueError as erro:
             raise ErroNormalizacao(
                 mensagem=str(erro),
                 campo="horarios.chegada",
-                empresa_identificada="Sertão Bus",
+                empresa_identificada=empresa,
             )
 
         try:
             duracao_minutos = int(
-                float(payload["duracao_horas"]) * 60
+                float(
+                    payload["duracao_horas"]
+                )
+                * 60
             )
+
         except (ValueError, TypeError):
             raise ErroNormalizacao(
-                mensagem="A duração informada é inválida.",
+                mensagem="Duração inválida.",
                 campo="duracao_horas",
-                empresa_identificada="Sertão Bus",
+                empresa_identificada=empresa,
             )
 
         try:
@@ -114,51 +178,52 @@ class NormalizadorSertaoBus(NormalizadorViagem):
                 chegada,
                 duracao_minutos,
             )
+
         except ValueError as erro:
             raise ErroNormalizacao(
                 mensagem=str(erro),
                 campo="duracao_horas",
-                empresa_identificada="Sertão Bus",
+                empresa_identificada=empresa,
             )
 
         try:
             valor = float(
                 payload["preco_total"]
             )
-        except (ValueError, TypeError):
-            raise ErroNormalizacao(
-                mensagem="O preço informado é inválido.",
-                campo="preco_total",
-                empresa_identificada="Sertão Bus",
-            )
 
-        try:
             validar_preco(valor)
-        except ValueError as erro:
+
+        except (ValueError, TypeError) as erro:
+            mensagem = str(erro)
+
+            if not mensagem:
+                mensagem = "Preço inválido."
+
             raise ErroNormalizacao(
-                mensagem=str(erro),
+                mensagem=mensagem,
                 campo="preco_total",
-                empresa_identificada="Sertão Bus",
+                empresa_identificada=empresa,
             )
 
         try:
             assentos = int(
                 payload["lugares_livres"]
             )
-        except (ValueError, TypeError):
-            raise ErroNormalizacao(
-                mensagem="A quantidade de assentos disponíveis é inválida.",
-                campo="lugares_livres",
-                empresa_identificada="Sertão Bus",
-            )
 
-        try:
             validar_assentos(assentos)
-        except ValueError as erro:
+
+        except (ValueError, TypeError) as erro:
+            mensagem = str(erro)
+
+            if not mensagem:
+                mensagem = (
+                    "Quantidade de assentos inválida."
+                )
+
             raise ErroNormalizacao(
-                mensagem=str(erro),
+                mensagem=mensagem,
                 campo="lugares_livres",
-                empresa_identificada="Sertão Bus",
+                empresa_identificada=empresa,
             )
 
         categorias = {
@@ -174,23 +239,24 @@ class NormalizadorSertaoBus(NormalizadorViagem):
 
         try:
             validar_categoria(categoria)
+
         except ValueError as erro:
             raise ErroNormalizacao(
                 mensagem=str(erro),
                 campo="servico",
-                empresa_identificada="Sertão Bus",
+                empresa_identificada=empresa,
             )
 
         return ViagemNormalizada(
             id_viagem=payload["numero"],
-            empresa="Sertão Bus",
+            empresa=empresa,
             origem=Localidade(
-                cidade=origem_cidade,
-                uf=origem_uf,
+                cidade=cidade_origem,
+                uf=uf_origem,
             ),
             destino=Localidade(
-                cidade=destino_cidade,
-                uf=destino_uf,
+                cidade=cidade_destino,
+                uf=uf_destino,
             ),
             partida=partida.isoformat(),
             chegada=chegada.isoformat(),

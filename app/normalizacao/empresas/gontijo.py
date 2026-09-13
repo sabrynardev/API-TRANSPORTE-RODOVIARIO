@@ -1,17 +1,22 @@
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
-from app.domain.models import Localidade, Preco, ViagemNormalizada
 from app.domain.exceptions import ErroNormalizacao
-from app.normalizacao.interface import NormalizadorViagem
-from app.domain.validacoes import (
-    validar_ordem_datas,
-    validar_duracao,
-    validar_preco,
-    validar_assentos,
-    validar_categoria,
-    validar_campos_obrigatorios,
+from app.domain.models import (
+    Localidade,
+    Preco,
+    ViagemNormalizada,
 )
+from app.domain.validacoes import (
+    validar_assentos,
+    validar_campos_obrigatorios,
+    validar_categoria,
+    validar_duracao,
+    validar_ordem_datas,
+    validar_preco,
+    validar_uf,
+)
+from app.normalizacao.interface import NormalizadorViagem
 
 
 class NormalizadorGontijo(NormalizadorViagem):
@@ -19,7 +24,13 @@ class NormalizadorGontijo(NormalizadorViagem):
     def reconhece(self, payload: dict) -> bool:
         return "serviceCode" in payload
 
-    def normalizar(self, payload: dict) -> ViagemNormalizada:
+    def normalizar(
+        self,
+        payload: dict,
+    ) -> ViagemNormalizada:
+
+        empresa = "Gontijo"
+
         campos_obrigatorios = [
             "serviceCode",
             "from",
@@ -37,16 +48,17 @@ class NormalizadorGontijo(NormalizadorViagem):
                 payload,
                 campos_obrigatorios,
             )
-        except KeyError as erro:
-            campo = erro.args[0]
 
+        except KeyError as erro:
             raise ErroNormalizacao(
                 mensagem="Campo obrigatório ausente.",
-                campo=campo,
-                empresa_identificada="Gontijo",
+                campo=erro.args[0],
+                empresa_identificada=empresa,
             )
 
-        fuso_bahia = ZoneInfo("America/Bahia")
+        fuso_bahia = ZoneInfo(
+            "America/Bahia"
+        )
 
         try:
             partida = datetime.fromisoformat(
@@ -54,12 +66,26 @@ class NormalizadorGontijo(NormalizadorViagem):
                     "Z",
                     "+00:00",
                 )
-            ).astimezone(fuso_bahia)
-        except (ValueError, AttributeError):
+            )
+
+            if partida.tzinfo is None:
+                partida = partida.replace(
+                    tzinfo=fuso_bahia
+                )
+            else:
+                partida = partida.astimezone(
+                    fuso_bahia
+                )
+
+        except (
+            ValueError,
+            TypeError,
+            AttributeError,
+        ):
             raise ErroNormalizacao(
-                mensagem="A data de saída possui formato inválido.",
+                mensagem="Data de saída inválida.",
                 campo="departure",
-                empresa_identificada="Gontijo",
+                empresa_identificada=empresa,
             )
 
         try:
@@ -68,34 +94,57 @@ class NormalizadorGontijo(NormalizadorViagem):
                     "Z",
                     "+00:00",
                 )
-            ).astimezone(fuso_bahia)
-        except (ValueError, AttributeError):
+            )
+
+            if chegada.tzinfo is None:
+                chegada = chegada.replace(
+                    tzinfo=fuso_bahia
+                )
+            else:
+                chegada = chegada.astimezone(
+                    fuso_bahia
+                )
+
+        except (
+            ValueError,
+            TypeError,
+            AttributeError,
+        ):
             raise ErroNormalizacao(
-                mensagem="A data de chegada possui formato inválido.",
+                mensagem="Data de chegada inválida.",
                 campo="arrival",
-                empresa_identificada="Gontijo",
+                empresa_identificada=empresa,
             )
 
         try:
-            validar_ordem_datas(partida, chegada)
+            validar_ordem_datas(
+                partida,
+                chegada,
+            )
+
         except ValueError as erro:
             raise ErroNormalizacao(
                 mensagem=str(erro),
                 campo="arrival",
-                empresa_identificada="Gontijo",
+                empresa_identificada=empresa,
             )
 
         try:
-            duracao_minutos = (
-                int(
-                    payload["estimatedDurationSeconds"]
-                ) // 60
+            duracao_segundos = int(
+                payload[
+                    "estimatedDurationSeconds"
+                ]
             )
+
+            duracao_minutos = (
+                duracao_segundos // 60
+            )
+
         except (ValueError, TypeError):
             raise ErroNormalizacao(
-                mensagem="A duração informada é inválida.",
+                mensagem="Duração inválida.",
                 campo="estimatedDurationSeconds",
-                empresa_identificada="Gontijo",
+                empresa_identificada=empresa,
             )
 
         try:
@@ -104,51 +153,59 @@ class NormalizadorGontijo(NormalizadorViagem):
                 chegada,
                 duracao_minutos,
             )
+
         except ValueError as erro:
             raise ErroNormalizacao(
                 mensagem=str(erro),
                 campo="estimatedDurationSeconds",
-                empresa_identificada="Gontijo",
+                empresa_identificada=empresa,
             )
 
         try:
             valor = float(
                 payload["fare"]["amount"]
             )
-        except (ValueError, TypeError, KeyError):
-            raise ErroNormalizacao(
-                mensagem="O preço informado é inválido.",
-                campo="fare.amount",
-                empresa_identificada="Gontijo",
-            )
 
-        try:
             validar_preco(valor)
-        except ValueError as erro:
+
+        except (
+            ValueError,
+            TypeError,
+            KeyError,
+        ) as erro:
+            mensagem = str(erro)
+
+            if not mensagem or isinstance(
+                erro,
+                KeyError,
+            ):
+                mensagem = "Preço inválido."
+
             raise ErroNormalizacao(
-                mensagem=str(erro),
+                mensagem=mensagem,
                 campo="fare.amount",
-                empresa_identificada="Gontijo",
+                empresa_identificada=empresa,
             )
 
         try:
             assentos = int(
                 payload["availableSeats"]
             )
-        except (ValueError, TypeError):
-            raise ErroNormalizacao(
-                mensagem="A quantidade de assentos disponíveis é inválida.",
-                campo="availableSeats",
-                empresa_identificada="Gontijo",
-            )
 
-        try:
             validar_assentos(assentos)
-        except ValueError as erro:
+
+        except (ValueError, TypeError) as erro:
+            mensagem = str(erro)
+
+            if not mensagem:
+                mensagem = (
+                    "Quantidade de assentos inválida."
+                )
+
             raise ErroNormalizacao(
-                mensagem=str(erro),
+                mensagem=mensagem,
                 campo="availableSeats",
-                empresa_identificada="Gontijo",
+                empresa_identificada=empresa,
             )
 
         categorias = {
@@ -164,30 +221,85 @@ class NormalizadorGontijo(NormalizadorViagem):
 
         try:
             validar_categoria(categoria)
+
         except ValueError as erro:
             raise ErroNormalizacao(
                 mensagem=str(erro),
                 campo="serviceClass",
-                empresa_identificada="Gontijo",
+                empresa_identificada=empresa,
+            )
+
+        try:
+            cidade_origem = (
+                payload["from"]["city"]
+            )
+
+            uf_origem = (
+                payload["from"]["state"]
+            )
+
+            cidade_destino = (
+                payload["to"]["city"]
+            )
+
+            uf_destino = (
+                payload["to"]["state"]
+            )
+
+        except (KeyError, TypeError):
+            raise ErroNormalizacao(
+                mensagem="Campo obrigatório ausente.",
+                campo="from/to",
+                empresa_identificada=empresa,
+            )
+
+        try:
+            validar_uf(uf_origem)
+
+        except ValueError as erro:
+            raise ErroNormalizacao(
+                mensagem=str(erro),
+                campo="from.state",
+                empresa_identificada=empresa,
+            )
+
+        try:
+            validar_uf(uf_destino)
+
+        except ValueError as erro:
+            raise ErroNormalizacao(
+                mensagem=str(erro),
+                campo="to.state",
+                empresa_identificada=empresa,
+            )
+
+        try:
+            moeda = payload["fare"]["currency"]
+
+        except (KeyError, TypeError):
+            raise ErroNormalizacao(
+                mensagem="Campo obrigatório ausente.",
+                campo="fare.currency",
+                empresa_identificada=empresa,
             )
 
         return ViagemNormalizada(
             id_viagem=payload["serviceCode"],
-            empresa="Gontijo",
+            empresa=empresa,
             origem=Localidade(
-                cidade=payload["from"]["city"],
-                uf=payload["from"]["state"],
+                cidade=cidade_origem,
+                uf=uf_origem,
             ),
             destino=Localidade(
-                cidade=payload["to"]["city"],
-                uf=payload["to"]["state"],
+                cidade=cidade_destino,
+                uf=uf_destino,
             ),
             partida=partida.isoformat(),
             chegada=chegada.isoformat(),
             duracao_minutos=duracao_minutos,
             preco=Preco(
                 valor=valor,
-                moeda=payload["fare"]["currency"],
+                moeda=moeda,
             ),
             categoria=categoria,
             assentos_disponiveis=assentos,
