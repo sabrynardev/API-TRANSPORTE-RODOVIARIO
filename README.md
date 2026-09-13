@@ -315,3 +315,214 @@ app/normalizacao/registry.py
 ```
 
 Esse comportamento demonstra a aplicação do Open/Closed Principle: o sistema pode ser estendido com novas estratégias sem modificar o fluxo principal já existente.
+
+
+## Contrato da API
+
+### Endpoint
+
+```http
+POST /api/v1/viagens/normalizar
+```
+
+O corpo da requisição deve ser um array JSON contendo uma ou mais viagens.
+
+A API identifica automaticamente qual empresa originou cada objeto através da estrutura do payload.
+
+Não é necessário informar campos como:
+
+```text
+empresa
+companhia
+tipo
+integracao
+```
+
+A ordem dos objetos enviada na requisição é preservada na resposta.
+
+---
+
+## Exemplo de requisição
+
+```json
+[
+  {
+    "codigoViagem": "PRG-2026-001",
+    "cidadeOrigem": "Paulo Afonso",
+    "ufOrigem": "BA",
+    "cidadeDestino": "Recife",
+    "ufDestino": "PE",
+    "dataHoraSaida": "15/10/2026 06:30",
+    "dataHoraChegada": "15/10/2026 12:50",
+    "fusoHorario": "America/Bahia",
+    "tempoEstimado": "06:20",
+    "valorPassagem": "129,90",
+    "tipoServico": "EXECUTIVO",
+    "assentosDisponiveis": "18"
+  },
+  {
+    "trip_id": "ROT-2026-872",
+    "origem": {
+      "municipio": "Paulo Afonso",
+      "estado": "BA"
+    },
+    "destino": {
+      "municipio": "Aracaju",
+      "estado": "SE"
+    },
+    "partida_em": "2026-10-15T07:00:00-03:00",
+    "chegada_em": "2026-10-15T12:10:00-03:00",
+    "duracao_minutos": 310,
+    "tarifa_centavos": 8990,
+    "moeda": "BRL",
+    "classe": "convencional",
+    "vagas": 22
+  }
+]
+```
+
+---
+
+## Exemplo de resposta
+
+```json
+{
+  "total": 2,
+  "viagens": [
+    {
+      "id_viagem": "PRG-2026-001",
+      "empresa": "Auto Viação Progresso",
+      "origem": {
+        "cidade": "Paulo Afonso",
+        "uf": "BA"
+      },
+      "destino": {
+        "cidade": "Recife",
+        "uf": "PE"
+      },
+      "partida": "2026-10-15T06:30:00-03:00",
+      "chegada": "2026-10-15T12:50:00-03:00",
+      "duracao_minutos": 380,
+      "preco": {
+        "valor": 129.9,
+        "moeda": "BRL"
+      },
+      "categoria": "executivo",
+      "assentos_disponiveis": 18
+    },
+    {
+      "id_viagem": "ROT-2026-872",
+      "empresa": "Rota Transportes",
+      "origem": {
+        "cidade": "Paulo Afonso",
+        "uf": "BA"
+      },
+      "destino": {
+        "cidade": "Aracaju",
+        "uf": "SE"
+      },
+      "partida": "2026-10-15T07:00:00-03:00",
+      "chegada": "2026-10-15T12:10:00-03:00",
+      "duracao_minutos": 310,
+      "preco": {
+        "valor": 89.9,
+        "moeda": "BRL"
+      },
+      "categoria": "convencional",
+      "assentos_disponiveis": 22
+    }
+  ]
+}
+```
+
+## Contrato normalizado de saída
+
+Todas as empresas são convertidas para a mesma estrutura:
+
+```text
+id_viagem
+empresa
+origem
+    cidade
+    uf
+destino
+    cidade
+    uf
+partida
+chegada
+duracao_minutos
+preco
+    valor
+    moeda
+categoria
+assentos_disponiveis
+```
+
+As categorias possíveis após a normalização são:
+
+```text
+convencional
+executivo
+semileito
+leito
+```
+
+As datas são retornadas no formato ISO 8601.
+
+Quando o payload não possui informação de fuso horário, a aplicação utiliza:
+
+```text
+America/Bahia
+```
+
+---
+
+## Tratamento de erros
+
+Quando qualquer objeto da requisição é inválido, toda a requisição é rejeitada com status:
+
+```http
+422 Unprocessable Entity
+```
+
+A API não retorna resultados parciais.
+
+Exemplo:
+
+```json
+{
+  "detail": {
+    "indice": 1,
+    "empresa_identificada": "Rota Transportes",
+    "campo": "chegada_em",
+    "mensagem": "A data de chegada deve ser posterior à data de saída."
+  }
+}
+```
+
+O campo `indice` informa qual objeto do array apresentou o problema.
+
+Caso o formato não corresponda a nenhuma empresa suportada:
+
+```json
+{
+  "detail": {
+    "indice": 0,
+    "empresa_identificada": null,
+    "campo": null,
+    "mensagem": "O formato do payload não corresponde a nenhuma companhia suportada."
+  }
+}
+```
+
+Entre as validações realizadas estão:
+
+- campos obrigatórios;
+- formato das datas;
+- chegada posterior à partida;
+- duração maior que zero;
+- compatibilidade entre duração e horários;
+- preço maior que zero;
+- quantidade de assentos não negativa;
+- UF com exatamente dois caracteres;
+- categoria reconhecida pelo sistema.
