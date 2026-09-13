@@ -188,3 +188,130 @@ As responsabilidades foram distribuídas entre componentes diferentes:
 - `empresas/`: contém as regras específicas de cada integração.
 
 Essa separação reduz o acoplamento e facilita manutenção, testes e inclusão de novas empresas.
+
+## Como adicionar uma nova empresa
+
+A arquitetura foi criada para permitir a inclusão de novas empresas sem alterar o endpoint ou o fluxo principal de normalização.
+
+Para adicionar uma nova integração, siga os passos abaixo.
+
+### 1. Criar um novo normalizador
+
+Crie um arquivo dentro de:
+
+```text
+app/normalizacao/empresas/
+```
+
+Exemplo:
+
+```text
+nova_empresa.py
+```
+
+A nova classe deve implementar `NormalizadorViagem`.
+
+Exemplo:
+
+```python
+from app.normalizacao.interface import NormalizadorViagem
+from app.domain.models import ViagemNormalizada
+
+
+class NormalizadorNovaEmpresa(NormalizadorViagem):
+
+    def reconhece(self, payload: dict) -> bool:
+        return "campo_identificador" in payload
+
+    def normalizar(
+        self,
+        payload: dict,
+    ) -> ViagemNormalizada:
+        # aplicar as regras específicas
+        # da nova empresa
+
+        ...
+```
+
+O método `reconhece()` deve identificar o formato da empresa através da estrutura do payload.
+
+Não deve ser adicionado um novo `if/elif` no endpoint ou no Pipeline para escolher a empresa.
+
+### 2. Implementar as regras específicas
+
+Dentro do método `normalizar()`, devem ser tratados os formatos particulares da nova empresa, como:
+
+- datas e fusos horários;
+- duração;
+- preço e moeda;
+- categoria;
+- assentos disponíveis;
+- origem e destino;
+- campos obrigatórios.
+
+O resultado deve sempre seguir o mesmo contrato representado por `ViagemNormalizada`.
+
+### 3. Registrar o normalizador
+
+Abra:
+
+```text
+app/normalizacao/configuracao.py
+```
+
+Importe a nova implementação:
+
+```python
+from app.normalizacao.empresas.nova_empresa import (
+    NormalizadorNovaEmpresa,
+)
+```
+
+Depois registre a estratégia:
+
+```python
+registry.registrar(
+    NormalizadorNovaEmpresa()
+)
+```
+
+Essa é a única alteração necessária no mecanismo de configuração das empresas.
+
+O endpoint, o Pipeline, o Registry e os normalizadores existentes não precisam ser modificados.
+
+### 4. Criar testes automatizados
+
+Crie testes específicos para a nova empresa dentro da pasta:
+
+```text
+tests/
+```
+
+Os testes devem verificar pelo menos:
+
+- reconhecimento do payload;
+- normalização para o contrato padrão;
+- tratamento dos principais erros;
+- compatibilidade com o processamento de múltiplas empresas.
+
+### Exemplo aplicado: Sertão Bus
+
+A empresa fictícia Sertão Bus foi adicionada seguindo esse processo.
+
+Foi criada uma nova implementação:
+
+```text
+app/normalizacao/empresas/sertao_bus.py
+```
+
+Ela implementa a mesma abstração utilizada pelas demais empresas e foi registrada em `configuracao.py`.
+
+Para sua inclusão, não foi necessário alterar:
+
+```text
+app/api/viagens.py
+app/normalizacao/pipeline.py
+app/normalizacao/registry.py
+```
+
+Esse comportamento demonstra a aplicação do Open/Closed Principle: o sistema pode ser estendido com novas estratégias sem modificar o fluxo principal já existente.
